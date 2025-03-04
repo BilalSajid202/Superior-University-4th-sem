@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Personality Prediction from Facial Features</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .upload-section {
+            flex: 1;
+            min-width: 300px;
+            margin-right: 20px;
+        }
+        .results-section {
+            flex: 2;
+            min-width: 400px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        #radar-chart {
+            max-width: 100%;
+            height: auto;
+        }
+        .trait-container {
+            margin-bottom: 15px;
+        }
+        .confidence-bar {
+            height: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+        .confidence-level {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+        .explanation {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced Personality Prediction from Facial Features</h1>
+    
+    <div class="container">
+        <div class="upload-section">
+            <p>
+                <strong>Guidelines for uploading an image:</strong>
+                <ul>
+                    <li>Upload a clear, front-facing portrait photo.</li>
+                    <li>Ensure good lighting and a neutral background.</li>
+                    <li>The face should be clearly visible and not obstructed.</li>
+                    <li>Avoid extreme facial expressions or angles.</li>
+                    <li>The image should be recent and accurately represent your current appearance.</li>
+                </ul>
+            </p>
+            
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="imageUpload">Upload Face Image:</label>
+                    <input type="file" id="imageUpload" accept="image/*">
+                </div>
+                
+                <div class="form-group">
+                    <label for="age">Age (optional):</label>
+                    <input type="number" id="age" min="1" max="120">
+                </div>
+                
+                <div class="form-group">
+                    <label for="gender">Gender (optional):</label>
+                    <select id="gender">
+                        <option value="">-- Select --</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ethnicity">Ethnicity (optional):</label>
+                    <select id="ethnicity">
+                        <option value="">-- Select --</option>
+                        <option value="asian">Asian</option>
+                        <option value="black">Black</option>
+                        <option value="hispanic">Hispanic</option>
+                        <option value="middle_eastern">Middle Eastern</option>
+                        <option value="white">White</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <button type="button" onclick="uploadImage()">Predict Personality</button>
+            </form>
+        </div>
+        
+        <div class="results-section">
+            <div id="results"></div>
+            <img id="radar-chart" alt="Personality Traits Radar Chart" style="display: none;">
+        </div>
+    </div>
+
+    <script>
+        function uploadImage() {
+            const fileInput = document.getElementById('imageUpload');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Add demographic information if provided
+            const age = document.getElementById('age').value;
+            if (age) {
+                formData.append('age', age);
+            }
+            
+            const gender = document.getElementById('gender').value;
+            if (gender) {
+                formData.append('gender', gender);
+            }
+            
+            const ethnicity = document.getElementById('ethnicity').value;
+            if (ethnicity) {
+                formData.append('ethnicity', ethnicity);
+            }
+
+            axios.post('/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            .then(function (response) {
+                const results = document.getElementById('results');
+                const radarChart = document.getElementById('radar-chart');
+                
+                if (response.data.error) {
+                    results.innerHTML = `<p style="color: red;">${response.data.error}</p>`;
+                    radarChart.style.display = 'none';
+                } else {
+                    let traitsHtml = '<h2>Predicted Personality Traits:</h2>';
+                    
+                    for (const [trait, score] of Object.entries(response.data.personality_traits)) {
+                        const confidence = response.data.confidence[trait];
+                        const explanations = response.data.explanation[trait];
+                        
+                        traitsHtml += `
+                            <div class="trait-container">
+                                <strong>${trait.charAt(0).toUpperCase() + trait.slice(1)}:</strong> ${score.toFixed(2)}
+                                <div class="confidence-bar">
+                                    <div class="confidence-level" style="width: ${confidence * 100}%"></div>
+                                </div>
+                                <div class="confidence-text">Confidence: ${(confidence * 100).toFixed(0)}%</div>
+                                <div class="explanation">
+                                    <strong>Factors:</strong>
+                                    <ul>
+                                        ${explanations.map(exp => `<li>${exp}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    results.innerHTML = traitsHtml;
+                    radarChart.src = `data:image/png;base64,${response.data.radar_chart}`;
+                    radarChart.style.display = 'block';
+                }
+            })
+            .catch(function (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = '<p style="color: red;">An error occurred. Please try again.</p>';
+            });
+        }
+    </script>
+</body>
+</html>
