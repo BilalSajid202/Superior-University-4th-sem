@@ -1,0 +1,82 @@
+def solve_n_queens(n):
+    def is_safe(board, row, col):
+        for i in range(col):
+            if board[row][i] == 1:
+                return False
+    
+        for i, j in zip(range(row, -1, -1), range(col, -1, -1)):
+            if board[i][j] == 1:
+                return False
+        for i, j in zip(range(row, n), range(col, -1, -1)):
+            if board[i][j] == 1:
+                return False
+                
+        return True
+    
+    def backtrack(board, col):
+        if col >= n:
+            return True
+            
+        for row in range(n):
+            if is_safe(board, row, col):
+                board[row][col] = 1
+                if backtrack(board, col + 1):
+                    return True
+                board[row][col] = 0
+        
+        return False
+    
+    board = [[0 for _ in range(n)] for _ in range(n)]
+    
+    if not backtrack(board, 0):
+        return None  
+
+    return [row.index(1) for row in board]
+
+def print_board(solution, n):
+    if solution is None:
+        print(f"No solution exists for {n}-Queens problem")
+        return
+        
+    print(f"\nSolution for {n}-Queens problem:")
+    board = [['.' for _ in range(n)] for _ in range(n)]
+    
+    for row, col in enumerate(solution):
+        board[row][col] = 'Q'
+    
+    for row in board:
+        print(' '.join(row))
+
+def count_solutions(n):
+    def is_safe(queens, row, col):
+        for r, c in enumerate(queens):
+            if c == col or r + c == row + col or r - c == row - col:
+                return False
+        return True
+    
+    def backtrack(queens, row):
+        if row == n:
+            return 1
+        
+        count = 0
+        for col in range(n):
+            if is_safe(queens, row, col):
+                queens[row] = col
+                count += backtrack(queens, row + 1)
+                queens[row] = -1
+        
+        return count
+    
+    return backtrack([-1] * n, 0)
+
+if __name__ == "__main__":
+    n = int(input("Enter the size of the board (N for N-Queens problem): "))
+    choice = input("Do you want to see a solution (S), count solutions (C), or both (B)? ").strip().upper()
+    
+    if choice in ['S', 'B']:
+        solution = solve_n_queens(n)
+        print_board(solution, n)
+    
+    if choice in ['C', 'B']:
+        solutions = count_solutions(n)
+        print(f"\nNumber of solutions for {n}-Queens problem: {solutions}")
