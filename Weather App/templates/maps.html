@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Maps</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .map-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .map-type-btn {
+            padding: 8px 16px;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .map-type-btn.active {
+            background-color: #2575fc;
+            color: white;
+        }
+        .map-legend {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .map-legend h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Weather Maps</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/maps" class="active">Weather Maps</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <div class="back-button">
+            <a href="/"><i class="fas fa-arrow-left"></i> Back to Weather</a>
+        </div>
+        
+        <div class="weather-card">
+            <h2>Interactive Weather Maps</h2>
+            <p>Explore different weather layers on the map. Select a layer type from the options below.</p>
+            
+            <div class="map-controls">
+                <button class="map-type-btn active" data-type="temp">Temperature</button>
+                <button class="map-type-btn" data-type="precipitation">Precipitation</button>
+                <button class="map-type-btn" data-type="wind">Wind Speed</button>
+                <button class="map-type-btn" data-type="pressure">Pressure</button>
+                <button class="map-type-btn" data-type="clouds">Clouds</button>
+            </div>
+            
+            <div id="map"></div>
+            
+            <div class="map-legend">
+                <h4>Legend</h4>
+                <div id="legend-content">
+                    <!-- Legend content will be updated based on selected map type -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Powered by WeatherAPI.com and OpenWeatherMap</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        const urlParams = new URLSearchParams(window.location.search);
+        const lat = parseFloat(urlParams.get('lat')) || 0;
+        const lon = parseFloat(urlParams.get('lon')) || 0;
+        
+        const map = L.map('map').setView([lat || 40, lon || 0], lat ? 10 : 2);
+        
+        // Add base tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add marker if coordinates are provided
+        if (lat && lon) {
+            L.marker([lat, lon]).addTo(map)
+                .bindPopup('Selected Location')
+                .openPopup();
+        }
+        
+        // Weather layer variables
+        let currentWeatherLayer = null;
+        const weatherLayers = {
+            temp: {
+                url: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=YOUR_OPENWEATHERMAP_KEY',
+                legend: [
+                    { color: '#b3d9ff', label: 'Cold (< 0°C)' },
+                    { color: '#99ccff', label: '0-10°C' },
+                    { color: '#80bfff', label: '10-20°C' },
+                    { color: '#66b3ff', label: '20-25°C' },
+                    { color: '#4da6ff', label: '25-30°C' },
+                    { color: '#3399ff', label: '30-35°C' },
+                    { color: '#1a8cff', label: '> 35°C' }
+                ]
+            },
+            precipitation: {
+                url: 'https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=YOUR_OPENWEATHERMAP_KEY',
+                legend: [
+                    { color: '#e6f7ff', label: 'None' },
+                    { color: '#ccefff', label: 'Light' },
+                    { color: '#99dfff', label: 'Moderate' },
+                    { color: '#66cfff', label: 'Heavy' },
+                    { color: '#33bfff', label: 'Very Heavy' }
+                ]
+            },
+            wind: {
+                url: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=YOUR_OPENWEATHERMAP_KEY',
+                legend: [
+                    { color: '#f2f2f2', label: 'Calm (< 5 km/h)' },
+                    { color: '#d9d9d9', label: 'Light (5-10 km/h)' },
+                    { color: '#bfbfbf', label: 'Moderate (10-20 km/h)' },
+                    { color: '#a6a6a6', label: 'Fresh (20-30 km/h)' },
+                    { color: '#8c8c8c', label: 'Strong (30-40 km/h)' },
+                    { color: '#737373', label: 'Gale (40-50 km/h)' },
+                    { color: '#595959', label: 'Storm (> 50 km/h)' }
+                ]
+            },
+            pressure: {
+                url: 'https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=YOUR_OPENWEATHERMAP_KEY',
+                legend: [
+                    { color: '#9ecae1', label: 'Low Pressure (< 1000 hPa)' },
+                    { color: '#6baed6', label: '1000-1010 hPa' },
+                    { color: '#4292c6', label: '1010-1020 hPa' },
+                    { color: '#2171b5', label: '1020-1030 hPa' },
+                    { color: '#084594', label: 'High Pressure (> 1030 hPa)' }
+                ]
+            },
+            clouds: {
+                url: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=YOUR_OPENWEATHERMAP_KEY',
+                legend: [
+                    { color: '#ffffff', label: 'Clear (0-10%)' },
+                    { color: '#f2f2f2', label: 'Few Clouds (10-25%)' },
+                    { color: '#d9d9d9', label: 'Scattered Clouds (25-50%)' },
+                    { color: '#bfbfbf', label: 'Broken Clouds (50-85%)' },
+                    { color: '#a6a6a6', label: 'Overcast (85-100%)' }
+                ]
+            }
+        };
+        
+        // Function to update weather layer
+        function updateWeatherLayer(type) {
+            // Remove current layer if exists
+            if (currentWeatherLayer) {
+                map.removeLayer(currentWeatherLayer);
+            }
+            
+            // Add new layer
+            currentWeatherLayer = L.tileLayer(weatherLayers[type].url, {
+                attribution: '&copy; OpenWeatherMap',
+                opacity: 0.6
+            }).addTo(map);
+            
+            // Update legend
+            updateLegend(type);
+        }
+        
+        // Function to update legend
+        function updateLegend(type) {
+            const legendContent = document.getElementById('legend-content');
+            legendContent.innerHTML = '';
+            
+            weatherLayers[type].legend.forEach(item => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                
+                const colorBox = document.createElement('div');
+                colorBox.className = 'legend-color';
+                colorBox.style.backgroundColor = item.color;
+                
+                const label = document.createElement('span');
+                label.textContent = item.label;
+                
+                legendItem.appendChild(colorBox);
+                legendItem.appendChild(label);
+                legendContent.appendChild(legendItem);
+            });
+        }
+        
+        // Initialize with temperature layer
+        updateWeatherLayer('temp');
+        
+        // Add event listeners to map type buttons
+        document.querySelectorAll('.map-type-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active button
+                document.querySelectorAll('.map-type-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Update weather layer
+                const type = this.getAttribute('data-type');
+                updateWeatherLayer(type);
+            });
+        });
+        
+        // Handle geolocation
+        if (!lat && !lon) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        map.setView([position.coords.latitude, position.coords.longitude], 10);
+                    },
+                    function(error) {
+                        console.error('Geolocation error:', error);
+                    }
+                );
+            }
+        }
+    </script>
+</body>
+</html>

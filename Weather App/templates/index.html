@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Weather App</h1>
+            <nav>
+                <ul>
+                    <li><a href="/" class="active">Home</a></li>
+                    <li><a href="/maps">Weather Maps</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <div class="search-section">
+            <div class="search-box">
+                <form action="/weather" method="POST" id="search-form">
+                    <input type="text" name="city" id="city-input" placeholder="Enter city name" required>
+                    <button type="submit">Search</button>
+                </form>
+                <button id="geolocation-btn" title="Use my location">
+                    <i class="fas fa-location-arrow"></i>
+                </button>
+            </div>
+            
+            {% if error %}
+            <div class="error">
+                <p>{{ error }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="favorites-section">
+            <h2>Favorite Locations</h2>
+            <div id="favorites-list" class="favorites-list">
+                <!-- Favorites will be loaded here via JavaScript -->
+                <p id="no-favorites" class="text-muted">No favorites saved yet. Search for a location and click the star icon to add it to your favorites.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Powered by WeatherAPI.com</p>
+        </div>
+    </div>
+
+    <script>
+        // Geolocation
+        document.getElementById('geolocation-btn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // Send coordinates to server
+                        fetch('/api/geolocation', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude
+                            }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                showError(data.error);
+                            } else {
+                                // Redirect to weather page with the data
+                                localStorage.setItem('weatherData', JSON.stringify(data));
+                                window.location.href = '/weather';
+                            }
+                        })
+                        .catch(error => {
+                            showError('Error fetching weather data');
+                            console.error('Error:', error);
+                        });
+                    },
+                    function(error) {
+                        document.getElementById('geolocation-btn').innerHTML = '<i class="fas fa-location-arrow"></i>';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                showError("Location access denied. Please enable location services.");
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                showError("Location information is unavailable.");
+                                break;
+                            case error.TIMEOUT:
+                                showError("Location request timed out.");
+                                break;
+                            case error.UNKNOWN_ERROR:
+                                showError("An unknown error occurred.");
+                                break;
+                        }
+                    }
+                );
+            } else {
+                showError("Geolocation is not supported by this browser.");
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.querySelector('.error') || document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `<p>${message}</p>`;
+            
+            if (!document.querySelector('.error')) {
+                const searchSection = document.querySelector('.search-section');
+                searchSection.appendChild(errorDiv);
+            }
+        }
+
+        // Favorites system
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFavorites();
+        });
+
+        function loadFavorites() {
+            const favorites = JSON.parse(localStorage.getItem('weatherFavorites')) || [];
+            const favoritesList = document.getElementById('favorites-list');
+            const noFavorites = document.getElementById('no-favorites');
+            
+            if (favorites.length > 0) {
+                noFavorites.style.display = 'none';
+                favoritesList.innerHTML = '';
+                
+                favorites.forEach(favorite => {
+                    const favoriteItem = document.createElement('div');
+                    favoriteItem.className = 'favorite-item';
+                    favoriteItem.innerHTML = `
+                        <span>${favorite.city}, ${favorite.country}</span>
+                        <div class="favorite-actions">
+                            <button class="view-favorite" data-city="${favorite.city}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="remove-favorite" data-city="${favorite.city}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    favoritesList.appendChild(favoriteItem);
+                });
+                
+                // Add event listeners to view buttons
+                document.querySelectorAll('.view-favorite').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const city = this.getAttribute('data-city');
+                        document.getElementById('city-input').value = city;
+                        document.getElementById('search-form').submit();
+                    });
+                });
+                
+                // Add event listeners to remove buttons
+                document.querySelectorAll('.remove-favorite').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const city = this.getAttribute('data-city');
+                        removeFavorite(city);
+                    });
+                });
+            } else {
+                noFavorites.style.display = 'block';
+            }
+        }
+
+        function removeFavorite(city) {
+            let favorites = JSON.parse(localStorage.getItem('weatherFavorites')) || [];
+            favorites = favorites.filter(favorite => favorite.city !== city);
+            localStorage.setItem('weatherFavorites', JSON.stringify(favorites));
+            loadFavorites();
+        }
+    </script>
+</body>
+</html>

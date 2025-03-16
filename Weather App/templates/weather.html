@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather for {{ weather.city }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Weather App</h1>
+            <nav>
+                <ul>
+                    <li><a href="/" class="active">Home</a></li>
+                    <li><a href="/maps">Weather Maps</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <div class="back-button">
+            <a href="/"><i class="fas fa-arrow-left"></i> Back to Search</a>
+        </div>
+        
+        <div class="weather-card">
+            <div class="weather-header">
+                <div class="location-info">
+                    <h1>{{ weather.city }}, {{ weather.region }}</h1>
+                    <p class="location">{{ weather.country }}</p>
+                    <p class="date">{{ weather.datetime }}</p>
+                    <p class="last-updated">Last updated: {{ weather.last_updated }}</p>
+                </div>
+                <div class="favorite-toggle">
+                    <button id="favorite-btn" data-city="{{ weather.city }}" data-country="{{ weather.country }}">
+                        <i class="far fa-star"></i>
+                    </button>
+                    <div class="unit-toggle">
+                        <button class="unit-btn active" data-unit="c">°C</button>
+                        <button class="unit-btn" data-unit="f">°F</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="weather-main">
+                <div class="weather-icon">
+                    <img src="{{ weather.icon }}" alt="{{ weather.condition }}">
+                    <p>{{ weather.condition }}</p>
+                </div>
+                
+                <div class="temperature">
+                    <h2 class="temp-c">{{ weather.temperature.c }}°C</h2>
+                    <h2 class="temp-f" style="display: none;">{{ weather.temperature.f }}°F</h2>
+                    <p class="feels-like-c">Feels like: {{ weather.feels_like.c }}°C</p>
+                    <p class="feels-like-f" style="display: none;">Feels like: {{ weather.feels_like.f }}°F</p>
+                </div>
+            </div>
+            
+            <div class="weather-details">
+                <div class="detail">
+                    <p class="label">Humidity</p>
+                    <p class="value">{{ weather.humidity }}%</p>
+                </div>
+                <div class="detail">
+                    <p class="label">Wind</p>
+                    <p class="value wind-kph">{{ weather.wind_speed.kph }} km/h ({{ weather.wind_direction }})</p>
+                    <p class="value wind-mph" style="display: none;">{{ weather.wind_speed.mph }} mph ({{ weather.wind_direction }})</p>
+                </div>
+                <div class="detail">
+                    <p class="label">Pressure</p>
+                    <p class="value">{{ weather.pressure }} mb</p>
+                </div>
+                <div class="detail">
+                    <p class="label">UV Index</p>
+                    <p class="value">{{ weather.uv }}</p>
+                </div>
+                <div class="detail">
+                    <p class="label">Cloud Cover</p>
+                    <p class="value">{{ weather.cloud }}%</p>
+                </div>
+                <div class="detail">
+                    <p class="label">Visibility</p>
+                    <p class="value vis-km">{{ weather.visibility.km }} km</p>
+                    <p class="value vis-miles" style="display: none;">{{ weather.visibility.miles }} miles</p>
+                </div>
+            </div>
+            
+            {% if weather.air_quality %}
+            <div class="air-quality-section">
+                <h3>Air Quality</h3>
+                <div class="weather-details">
+                    <div class="detail">
+                        <p class="label">US EPA Index</p>
+                        <p class="value">{{ weather.air_quality.us_epa_index }}</p>
+                    </div>
+                    <div class="detail">
+                        <p class="label">PM2.5</p>
+                        <p class="value">{{ weather.air_quality.pm2_5 }}</p>
+                    </div>
+                    <div class="detail">
+                        <p class="label">PM10</p>
+                        <p class="value">{{ weather.air_quality.pm10 }}</p>
+                    </div>
+                    <div class="detail">
+                        <p class="label">CO</p>
+                        <p class="value">{{ weather.air_quality.co }}</p>
+                    </div>
+                    <div class="detail">
+                        <p class="label">NO2</p>
+                        <p class="value">{{ weather.air_quality.no2 }}</p>
+                    </div>
+                    <div class="detail">
+                        <p class="label">O3</p>
+                        <p class="value">{{ weather.air_quality.o3 }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Forecast Section -->
+            <div class="forecast-section">
+                <h3>7-Day Forecast</h3>
+                <div class="forecast-container">
+                    {% for day in forecast %}
+                    <div class="forecast-day">
+                        <div class="forecast-date">{{ day.date_formatted }}</div>
+                        <div class="forecast-icon">
+                            <img src="{{ day.icon }}" alt="{{ day.condition }}">
+                        </div>
+                        <div class="forecast-condition">{{ day.condition }}</div>
+                        <div class="forecast-temp">
+                            <span class="temp-c">{{ day.max_temp.c }}°C / {{ day.min_temp.c }}°C</span>
+                            <span class="temp-f" style="display: none;">{{ day.max_temp.f }}°F / {{ day.min_temp.f }}°F</span>
+                        </div>
+                        <div class="forecast-details">
+                            <div><i class="fas fa-tint"></i> {{ day.avg_humidity }}%</div>
+                            <div><i class="fas fa-wind"></i> <span class="wind-kph">{{ day.max_wind_kph }} km/h</span><span class="wind-mph" style="display: none;">{{ day.max_wind_mph }} mph</span></div>
+                            <div><i class="fas fa-cloud-rain"></i> {{ day.daily_chance_of_rain }}%</div>
+                        </div>
+                        
+                        <!-- Hourly Forecast (Collapsible) -->
+                        <button class="hourly-toggle">Show Hourly <i class="fas fa-chevron-down"></i></button>
+                        <div class="hourly-forecast" style="display: none;">
+                            <div class="hourly-container">
+                                {% for hour in day.hourly %}
+                                <div class="hourly-item">
+                                    <div class="hourly-time">{{ hour.time }}</div>
+                                    <div class="hourly-icon">
+                                        <img src="{{ hour.icon }}" alt="{{ hour.condition }}">
+                                    </div>
+                                    <div class="hourly-temp">
+                                        <span class="temp-c">{{ hour.temp_c }}°C</span>
+                                        <span class="temp-f" style="display: none;">{{ hour.temp_f }}°F</span>
+                                    </div>
+                                    <div class="hourly-wind">
+                                        <span class="wind-kph">{{ hour.wind_kph }} km/h</span>
+                                        <span class="wind-mph" style="display: none;">{{ hour.wind_mph }} mph</span>
+                                    </div>
+                                    <div class="hourly-rain">
+                                        <i class="fas fa-cloud-rain"></i> {{ hour.chance_of_rain }}%
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Weather Alerts Section (if any) -->
+            {% if alerts and alerts|length > 0 %}
+            <div class="alerts-section">
+                <h3>Weather Alerts</h3>
+                <div class="alerts-container">
+                    {% for alert in alerts %}
+                    <div class="alert-item">
+                        <div class="alert-headline">{{ alert.headline }}</div>
+                        <div class="alert-desc">{{ alert.desc }}</div>
+                        <div class="alert-time">
+                            <span>Effective: {{ alert.effective }}</span>
+                            <span>Expires: {{ alert.expires }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Weather Map Preview -->
+            <div class="map-preview">
+                <h3>Weather Map</h3>
+                <div class="map-container">
+                    <img src="https://tile.openweathermap.org/map/temp_new/10/{{ weather.location.lat|int }}/{{ weather.location.lon|int }}.png?appid=YOUR_OPENWEATHERMAP_KEY" alt="Weather Map">
+                    <a href="/maps?lat={{ weather.location.lat }}&lon={{ weather.location.lon }}" class="view-full-map">View Full Weather Maps</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Powered by WeatherAPI.com</p>
+        </div>
+    </div>
+
+    <script>
+        // Unit toggle
+        document.querySelectorAll('.unit-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const unit = this.getAttribute('data-unit');
+                
+                // Update active button
+                document.querySelectorAll('.unit-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Toggle temperature displays
+                if (unit === 'c') {
+                    document.querySelectorAll('.temp-c, .feels-like-c, .wind-kph, .vis-km').forEach(el => {
+                        el.style.display = '';
+                    });
+                    document.querySelectorAll('.temp-f, .feels-like-f, .wind-mph, .vis-miles').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                } else {
+                    document.querySelectorAll('.temp-c, .feels-like-c, .wind-kph, .vis-km').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                    document.querySelectorAll('.temp-f, .feels-like-f, .wind-mph, .vis-miles').forEach(el => {
+                        el.style.display = '';
+                    });
+                }
+            });
+        });
+        
+        // Hourly forecast toggle
+        document.querySelectorAll('.hourly-toggle').forEach(button => {
+            button.addEventListener('click', function() {
+                const hourlyForecast = this.nextElementSibling;
+                const icon = this.querySelector('i');
+                
+                if (hourlyForecast.style.display === 'none') {
+                    hourlyForecast.style.display = 'block';
+                    this.textContent = 'Hide Hourly ';
+                    this.appendChild(icon);
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                } else {
+                    hourlyForecast.style.display = 'none';
+                    this.textContent = 'Show Hourly ';
+                    this.appendChild(icon);
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
+            });
+        });
+        
+        // Favorites system
+        document.addEventListener('DOMContentLoaded', function() {
+            const favoriteBtn = document.getElementById('favorite-btn');
+            const city = favoriteBtn.getAttribute('data-city');
+            const country = favoriteBtn.getAttribute('data-country');
+            
+            // Check if this location is already a favorite
+            const favorites = JSON.parse(localStorage.getItem('weatherFavorites')) || [];
+            const isFavorite = favorites.some(fav => fav.city === city);
+            
+            // Update button appearance
+            if (isFavorite) {
+                favoriteBtn.innerHTML = '<i class="fas fa-star"></i>';
+                favoriteBtn.classList.add('is-favorite');
+            } else {
+                favoriteBtn.innerHTML = '<i class="far fa-star"></i>';
+                favoriteBtn.classList.remove('is-favorite');
+            }
+            
+            // Add click event
+            favoriteBtn.addEventListener('click', function() {
+                const favorites = JSON.parse(localStorage.getItem('weatherFavorites')) || [];
+                const isFavorite = favorites.some(fav => fav.city === city);
+                
+                if (isFavorite) {
+                    // Remove from favorites
+                    const updatedFavorites = favorites.filter(fav => fav.city !== city);
+                    localStorage.setItem('weatherFavorites', JSON.stringify(updatedFavorites));
+                    this.innerHTML = '<i class="far fa-star"></i>';
+                    this.classList.remove('is-favorite');
+                } else {
+                    // Add to favorites
+                    favorites.push({ city, country });
+                    localStorage.setItem('weatherFavorites', JSON.stringify(favorites));
+                    this.innerHTML = '<i class="fas fa-star"></i>';
+                    this.classList.add('is-favorite');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
