@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Info Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #fefefe; }
+        .chat-container { max-width: 600px; margin: 50px auto; padding: 20px; background: #fffbe6; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #007bff; }
+        .chat-box { height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; background: #ffffff; border-radius: 5px; }
+        .chat-message { margin: 5px 0; font-size: 14px; }
+        .user { text-align: right; color: #007bff; }
+        .bot { text-align: left; color: #28a745; }
+        input[type="text"] { width: 80%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px; }
+        button { padding: 10px 15px; border-radius: 5px; border: none; background: #007bff; color: white; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .hint-box { font-size: 14px; color: #555; margin: 10px 0; background: #f1f1f1; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2>🍽️ Restaurant Info Chatbot</h2>
+        <div class="hint-box">
+            <strong>Hint:</strong> You can ask me about:
+            <ul>
+                <li><strong>Menu</strong>: "What's on the menu?"</li>
+                <li><strong>Specials</strong>: "Do you have any specials?"</li>
+                <li><strong>Hours</strong>: "What are your opening hours?"</li>
+                <li><strong>Location</strong>: "Where are you located?"</li>
+                <li><strong>Reservation</strong>: "How can I make a reservation?"</li>
+            </ul>
+            Try asking me something now! 😊
+        </div>
+        <div id="chatBox" class="chat-box"></div>
+        <input type="text" id="userInput" placeholder="Ask about menu, hours, location..." autofocus>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        function appendMessage(sender, message) {
+            const chatBox = document.getElementById('chatBox');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-message ${sender}`;
+            msgDiv.innerText = message;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendMessage() {
+            const userInput = document.getElementById('userInput');
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            appendMessage('user', message);
+            userInput.value = '';
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => appendMessage('bot', data.reply))
+            .catch(error => appendMessage('bot', 'Oops! Something went wrong.'));
+        }
+    </script>
+</body>
+</html>
